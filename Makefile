@@ -10,12 +10,15 @@ LN     = gcc
 LNFLAGS=
 
 SRC    = calc.l mystack.c mystack.h func.c func.h
-OBJ    = calc.o mystack.o
+OBJ    = calc.o mystack.o func.o
 
 all:	calc
 
 test: all
 	./calc < test1.txt
+	./calc < test21.txt
+	./calc < test22.txt
+	./calc < test23.txt
 
 calc:	$(OBJ)
 	$(LN) $(LNFLAGS) -o calc $(OBJ)
