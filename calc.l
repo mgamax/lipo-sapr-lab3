@@ -40,6 +40,10 @@ typedef enum {
 my_stack stack;
 
 int end_file;
+int diapason_opened;
+int delimiter;
+int comma;
+int numbers;
 
 %}
 
@@ -96,13 +100,79 @@ int process_command(int token)
     fprintf(stderr, "token: %d\n", token);
 
     switch (token) {
-    case LexNumber:
-        my_stack_push(&stack, int_value);
-        if (my_stack_is_full(&stack)) {
+    case LexNumber: {
+        if (diapason_opened == 1) {
+            if ((!numbers)
+                || (numbers == 1 && delimeter)
+                || (numbers == 1 && comma)
+                || (numbers == 2 && (comma && delimeter))
+            ) {
+                my_stack_push(&stack, int_value);
+                if (my_stack_is_full(&stack)) {
+                    return -1;
+                }
+                numbers++;
+            } else {
+                return -1;
+            }
+            if (numbers > 3) {
+                return -1;
+            }
+        } else {
+            my_stack_push(&stack, int_value);
+            if (my_stack_is_full(&stack)) {
+                return -1;
+            }
+        }
+        break; }
+    case LexDiapStart: {
+        if (diapason_opened == 1 || delim || comma || numbers > 0) {
             return -1;
         }
-        break;
+        diapason_opened = 1;
+        numbers = 0;
+        
+        break;}
+        
+        
+    case LexComma: {
+        if (comma || delim_parsed || !diapason_opened) {
+            return -1;
+        }
+        comma = 1;
+        break; }
+        
+    case LexDiapDelim: {
+        if (delimeter || !diapason_opened) {
+            return -1;
+        }
+        if (numbers == 1) {
+            delimeter = 1;
+            my_stack_push(&stack, 1);   // Default step
+        }
+        else if ((numbers == 2 && comma)) {
+            delimeter = 1;
+        } else {
+            return -1;
+        }
+        break;}
+        
+    case LexDiapEnd: {
+        if (!diapason_opened) {
+            return -1;
+        }
+        if ((numbers == 2 && delim)
+            || (numbers == 3 && (delimeter && comma))
+        ) {
+            clean_flags();
+        } else {
+            return -1;
+        }
+        break;}
     case LexPlus: {
+        if (diapason_opened || comma || delimiter) {
+            return -1;
+        }
         if (my_stack_is_empty(&stack)) {
             return -1;
         }
@@ -119,6 +189,9 @@ int process_command(int token)
         }
         break;}
     case LexMinus: {
+        if (diapason_opened || comma || delimiter) {
+            return -1;
+        }
         if (my_stack_is_empty(&stack)) {
             return -1;
         }
@@ -135,6 +208,9 @@ int process_command(int token)
         }
         break;}
     case LexDiv: {
+        if (diapason_opened || comma || delimiter) {
+            return -1;
+        }
         if (my_stack_is_empty(&stack)) {
             return -1;
         }
@@ -151,6 +227,9 @@ int process_command(int token)
         }
         break;}
     case LexMult: {
+        if (diapason_opened || comma || delimiter) {
+            return -1;
+        }
         if (my_stack_is_empty(&stack)) {
             return -1;
         }
