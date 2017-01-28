@@ -26,6 +26,13 @@ typedef enum {
     LexMinus,
     LexDiv,
     LexMult,
+    LexDiapStart,
+    LexDiapEnd,
+    LexDiapDelim,
+    LexDiapMultPre,
+    LexDiapMultPost,
+    LexNumberInDiap,
+    LexComma,
     LexEnd,
     LexUnknown,
 } LexType;
@@ -40,6 +47,7 @@ int end_file;
 
 digit     [0-9]
 number    {digit}+
+delimiter \.\.\.
 
 %%
 
@@ -47,6 +55,18 @@ number    {digit}+
 		  int_value=atoi(yytext);
 		  fprintf(stderr, "found %d\n", int_value);
 		  return LexNumber; }
+{delimiter} {
+          fprintf(stderr, "...\n");  
+          return LexDiapDelim; }
+\[           {
+          fprintf(stderr, "[\n");  
+          return LexDiapStart;}
+,           {
+          fprintf(stderr, ",\n");  
+          return LexComma;}
+\]           {
+          fprintf(stderr, "]\n");  
+          return LexDiapEnd;}
 \+		{
 		  fprintf(stderr, "plus\n");
 		  return LexPlus; }
