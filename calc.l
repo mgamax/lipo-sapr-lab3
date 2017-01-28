@@ -18,6 +18,8 @@ This file is part of Reverse Notation Calc.
 */
 
 #include "mystack.h"
+#include "func.h"
+
 int int_value;
 
 typedef enum {
@@ -38,6 +40,9 @@ typedef enum {
 } LexType;
 
 my_stack stack;
+
+void clean_stack_and_flags();
+void clean_flags();
 
 int end_file;
 int diapason_opened;
@@ -71,6 +76,15 @@ delimiter \.\.\.
 \]           {
           fprintf(stderr, "]\n");  
           return LexDiapEnd;}
+\*nd        {
+          fprintf(stderr, "diap * pre\n");  
+          return LexDiapMultPre;}
+\*dn        {
+          fprintf(stderr, "diap * post\n");  
+          return LexDiapMultPost;}
+\?d         {
+          fprintf(stderr, "is number in diap\n");  
+          return LexNumberInDiap;}
 \+		{
 		  fprintf(stderr, "plus\n");
 		  return LexPlus; }
@@ -103,9 +117,9 @@ int process_command(int token)
     case LexNumber: {
         if (diapason_opened == 1) {
             if ((!numbers)
-                || (numbers == 1 && delimeter)
+                || (numbers == 1 && delimiter)
                 || (numbers == 1 && comma)
-                || (numbers == 2 && (comma && delimeter))
+                || (numbers == 2 && (comma && delimiter))
             ) {
                 my_stack_push(&stack, int_value);
                 if (my_stack_is_full(&stack)) {
@@ -126,7 +140,7 @@ int process_command(int token)
         }
         break; }
     case LexDiapStart: {
-        if (diapason_opened == 1 || delim || comma || numbers > 0) {
+        if (diapason_opened == 1 || delimiter || comma || numbers > 0) {
             return -1;
         }
         diapason_opened = 1;
@@ -134,24 +148,23 @@ int process_command(int token)
         
         break;}
         
-        
     case LexComma: {
-        if (comma || delim_parsed || !diapason_opened) {
+        if (comma || delimiter || !diapason_opened) {
             return -1;
         }
         comma = 1;
         break; }
         
     case LexDiapDelim: {
-        if (delimeter || !diapason_opened) {
+        if (delimiter || !diapason_opened) {
             return -1;
         }
         if (numbers == 1) {
-            delimeter = 1;
+            delimiter = 1;
             my_stack_push(&stack, 1);   // Default step
         }
         else if ((numbers == 2 && comma)) {
-            delimeter = 1;
+            delimiter = 1;
         } else {
             return -1;
         }
@@ -161,14 +174,51 @@ int process_command(int token)
         if (!diapason_opened) {
             return -1;
         }
-        if ((numbers == 2 && delim)
-            || (numbers == 3 && (delimeter && comma))
+        if ((numbers == 2 && delimiter)
+            || (numbers == 3 && (delimiter && comma))
         ) {
             clean_flags();
         } else {
             return -1;
         }
         break;}
+        
+    case LexDiapMultPost: {
+        if ((diapason_opened || comma || delimiter)
+            || my_stack_count(&stack) < 4 
+            || my_stack_is_full(&stack)
+        ) {
+            return -1;
+        }
+        
+        lex_diap_mult_post(&stack);
+        
+        break; }
+        
+    case LexDiapMultPre: {
+        if ((diapason_opened || comma || delimiter)
+            || my_stack_count(&stack) < 4 
+            || my_stack_is_full(&stack)
+        ) {
+            return -1;
+        }
+        
+        lex_diap_mult_pre(&stack);    
+        
+        break; }
+        
+    case LexNumberInDiap: {
+        if ((diapason_opened || comma || delimiter)
+            || my_stack_count(&stack) < 4 
+            || my_stack_is_full(&stack)
+        ) {
+            return -1;
+        }
+        
+        lex_number_in_diap(&stack);
+        
+        break; }
+        
     case LexPlus: {
         if (diapason_opened || comma || delimiter) {
             return -1;
@@ -268,6 +318,7 @@ int calc_line()
             break;
         }
         else if (cmd_res == -1) {
+            clean_stack_and_flags();
             fprintf(stderr, "Syntax error\n");
             return 0;
         }
@@ -278,16 +329,47 @@ int calc_line()
         fprintf(stderr, "Stack is empty but required value\n");
         return 0;
     }
-
-    int result = my_stack_pull(&stack);
-    fprintf(yyout, "%d ", result);
-
-    if (!my_stack_is_empty(&stack)) {
-        fprintf(stderr, "Stack not empty after calculation\n");
-        return 0;
+    
+    if (my_stack_count(&stack) == 4) {
+        int result = my_stack_pull(&stack);
+        fprintf(yyout, "%d ", result);
     }
+        
+    if (my_stack_count(&stack) == 3) {
+        fprintf(yyout, "range(");
+        for (int i = 0; i < 3; i++) {
+            int result = my_stack_pull(&stack);
+            fprintf(yyout, "%d", result);
+            
+            if (i != 2) {
+                fprintf(yyout, ", ");
+            }
+        }
+        fprintf(yyout, ") ");
+    } else {
+        for (int i = 0; i < my_stack_count(&stack); i++) {
+            int result = my_stack_pull(&stack);
+            fprintf(yyout, "%d ", result);
+        }
+    }
+    
+    clean_stack_and_flags();
 
     return 1;
+}
+
+void clean_flags()
+{
+    diapason_opened = 0;
+    comma = 0;
+    delimiter = 0;
+    numbers = 0;
+}
+
+void clean_stack_and_flags()
+{
+    clean_flags();
+    my_stack_clean(&stack);
 }
 
 void calc()
