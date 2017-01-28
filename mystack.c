@@ -49,6 +49,24 @@ int my_stack_pull(my_stack* stack)
     return stack->ptr[--stack->count];
 }
 
+int my_stack_count(my_stack* stack)
+{
+    return stack->count;
+}
+
+void my_stack_clean(my_stack* stack)
+{
+    stack->count = 0;
+}
+
+int my_stack_get_deep(my_stack* stack, int index)
+{
+    if (stack->count == 0) {
+        return -1;
+    }
+    return stack->ptr[stack->count -  index];
+}
+
 int my_stack_top(my_stack* stack)
 {
     if (stack->count == 0) {
